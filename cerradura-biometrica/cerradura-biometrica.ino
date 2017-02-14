@@ -20,6 +20,7 @@ void checkAccess();
 
 //Define modules
 void subscribe_control();
+void unsubscribe_control();
 uint8_t getFingerImage();
 bool getFingerPrint();
 int checkFingerID();
@@ -160,14 +161,18 @@ bool control(){
     }
     else{
       showLed(WHITE_LED,1,"Introduzca una huella de control");
-      if(isFingerControl())
+      if(isFingerControl()){
         correct_control = true;
+        showLed(GREEN_LED,3,"Huella de control Correcta");
+      }
       else
         showLed(RED_LED,5, "Error: No es huella de control");
     }
     if(correct_control){
       if(option == 'A')
         subscribe_control();
+      else if(option == 'B')
+        unsubscribe_control();
     }
   }
   else
@@ -203,6 +208,20 @@ void subscribe_control(){
     showLed(RED_LED,2, "Error: Las huellas no coinciden");
 }
 
+void unsubscribe_control(){
+  showLed(WHITE_LED,2,"Introduce huella a borrar");
+  int finger_id = checkFingerID(); 
+  if(finger_id != -1){ 
+    if(finger_id >= 0 && finger_id <= control_id){ 
+      if(finger.deleteModel(finger_id) == FINGERPRINT_OK) 
+        showLed(GREEN_LED,3,"Usuario de      control borrado"); 
+    } 
+    else 
+      showLed(RED_LED,3,"Usuario normal  no borrado"); 
+  }
+  else 
+    showLed(RED_LED,3,"Usuario no borrado"); 
+}
 
 uint8_t getFingerImage(){
   uint8_t p = -1;

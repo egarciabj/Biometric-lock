@@ -139,7 +139,24 @@ bool subscribe(){
   else
     showLed(RED_LED,5, "Error: No es huella de control");
 }
-bool unsubscribe(){}
+bool unsubscribe(){
+  showLed(WHITE_LED,1,"Introduzca una  huella de control");
+  if(isFingerControl()){
+    int finger_id = checkFingerID();
+    if(finger_id != -1){
+      if(finger_id > num_control_id && finger_id <= user_id){
+        if(finger.deleteModel(finger_id) == FINGERPRINT_OK)
+          showLed(GREEN_LED,3,"Usuario borrado correctamente");
+      }
+      else
+        showLed(RED_LED,3,"Usuario de      control no borrado");
+    }
+    else
+      showLed(RED_LED,3,"Usuario no borrado");
+  }
+  else
+    showLed(RED_LED,5, "Error: No es    huella de control");
+}
 bool control(){}
 bool reset(){}
 

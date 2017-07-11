@@ -1,6 +1,7 @@
 /*****************************************************************************
- * Designed to work with Arduino Uno, generic keypad (using a matrix pinout)
- * and generic fingerprint sensor (using Serial Communication)
+ * Designed to work with Arduino Uno, generic keypad (using a matrix pinout),
+ * generic fingerprint sensor (using Serial Communication) and OLED display
+ * 128x64 size (using i2c bus)
  * 
  * @Author: Jorge Bote Albalá - Joriks <jorikst@gmail.com>
  *****************************************************************************/
@@ -86,8 +87,9 @@ int key_a = 1111;
 int key_b = 2222;
 
 void setup(){
-  Serial.begin(9600);
-  kpd.setDebounceTime(50);
+  #ifdef DEBUG
+    Serial.begin(9600);
+  #endif
   pinMode(WHITE_LED,OUTPUT);
   pinMode(GREEN_LED,OUTPUT);
   pinMode(RED_LED,OUTPUT);
@@ -133,6 +135,8 @@ void loop(){
 
 bool subscribe(){
   unsigned int user_pass = 0;
+  char buf[4];
+  sprintf(buf,"%d",user_id);
   
   showLed(WHITE_LED,1,"Introduzca una  huella de       control");
   if(isFingerControl()){
@@ -157,7 +161,16 @@ bool subscribe(){
         EEPROM.write((user_id*4)+0,user_pass%10);
         user_id++;
         EEPROM.write(646,user_id);
-        showLed(GREEN_LED,2,"Usuario agregado");
+        #ifdef OLED_MODE
+          u8g.firstPage();
+          do {  
+            u8g.drawStr( 0, 15, "Usuario agregado");
+            u8g.drawStr( 0, 30, buf);
+          } while( u8g.nextPage() );
+          delay(5000);
+          u8g.firstPage();
+          while( u8g.nextPage() );
+        #endif
       }
     }
     else
@@ -399,7 +412,7 @@ int16_t checkPassword(){
     pass2 = getPassword();
     if(pass2 != -1){
       if(pass == pass2){
-        showLed(GREEN_LED,3,"Las Claves son  iguales");
+        showLed(GREEN_LED,3,"Clave Correcta");
         return pass;
       }
       else

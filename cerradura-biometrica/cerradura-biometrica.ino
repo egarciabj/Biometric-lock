@@ -24,6 +24,7 @@ bool unsubscribe();
 bool control();
 bool reset();
 void checkAccess();
+uint8_t limitReset();
 
 //Define modules
 void subscribe_control();
@@ -69,6 +70,12 @@ byte colPins[COLS] = {6, 7, 8, 9}; //connect to the column pinouts of the kpd
 
 Keypad kpd = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS); //Keypad variable
 
+/************************** Time Limit *************************************/
+
+unsigned long interval = 3000; // 30 days
+uint8_t limit = 6; // 6 months
+unsigned long previousMills = 0; // time track
+
 /************************** Fingerprint Setup *************************************/
 // IN from sensor (YELLOW wire to pin 10)
 // OUT from arduino  (WHITE wire to pin 11)
@@ -112,6 +119,24 @@ void setup(){
 }
 
 void loop(){
+unsigned long currentMillis = millis();
+  if (currentMillis - previousMills >= interval) {
+#ifdef DEBUG
+    Serial.println(currentMillis);
+    Serial.println(previousMills);
+    Serial.println(interval);
+#endif
+    // es hora de aventuras!
+    if (limitReset() == 161)
+      Serial.println("Success checking the limit");
+    else
+      Serial.println("Error checking the limit");
+
+    previousMills = currentMillis;
+#ifdef DEBUG
+    Serial.println(previousMills);
+#endif
+  }
   char op = kpd.waitForKey();
   if(kpd.getState() == PRESSED){
     switch(op){
@@ -148,13 +173,14 @@ bool subscribe(){
           Serial.print(user_pass); 
           Serial.println(")"); 
         #endif
-        EEPROM.write((user_id*4)+3,user_pass%10);
+		EEPROM.write((user_id*5)+4,1);
+        EEPROM.write((user_id*5)+3,user_pass%10);
         user_pass = user_pass/10;
-        EEPROM.write((user_id*4)+2,user_pass%10);
+        EEPROM.write((user_id*5)+2,user_pass%10);
         user_pass = user_pass/10;
-        EEPROM.write((user_id*4)+1,user_pass%10);
+        EEPROM.write((user_id*5)+1,user_pass%10);
         user_pass = user_pass/10;
-        EEPROM.write((user_id*4)+0,user_pass%10);
+        EEPROM.write((user_id*5)+0,user_pass%10);
         user_id++;
         EEPROM.write(646,user_id);
         showLed(GREEN_LED,2,"Usuario agregado");
@@ -175,10 +201,11 @@ bool unsubscribe(){
     if(finger_id != -1){
       if(finger_id > num_control_id && finger_id <= user_id){
         if(finger.deleteModel(finger_id) == FINGERPRINT_OK){
-          EEPROM.write((finger_id*4)+0,255);
-          EEPROM.write((finger_id*4)+1,255);
-          EEPROM.write((finger_id*4)+2,255);
-          EEPROM.write((finger_id*4)+3,255);
+          EEPROM.write((finger_id*5)+0,255);
+          EEPROM.write((finger_id*5)+1,255);
+          EEPROM.write((finger_id*5)+2,255);
+          EEPROM.write((finger_id*5)+3,255);
+		  EEPROM.write((finger_id*5)+4,255);
           showLed(GREEN_LED,3,"Usuario borrado correctamente");
         }
       }
@@ -281,13 +308,13 @@ void subscribe_control(){
           Serial.print(user_pass); 
           Serial.println(")"); 
         #endif
-        EEPROM.write((control_id*4)+3,user_pass%10);
+        EEPROM.write((control_id*5)+3,user_pass%10);
         user_pass = user_pass/10;
-        EEPROM.write((control_id*4)+2,user_pass%10);
+        EEPROM.write((control_id*5)+2,user_pass%10);
         user_pass = user_pass/10;
-        EEPROM.write((control_id*4)+1,user_pass%10);
+        EEPROM.write((control_id*5)+1,user_pass%10);
         user_pass = user_pass/10;
-        EEPROM.write((control_id*4)+0,user_pass%10);
+        EEPROM.write((control_id*5)+0,user_pass%10);
         control_id++;
         EEPROM.write(645,control_id);
         showLed(GREEN_LED,2,"Usuario agregado");
@@ -306,10 +333,10 @@ void unsubscribe_control(){
   if(finger_id != -1){ 
     if(finger_id >= 0 && finger_id <= control_id){ 
       if(finger.deleteModel(finger_id) == FINGERPRINT_OK){
-        EEPROM.write((finger_id*4)+0,255);
-        EEPROM.write((finger_id*4)+1,255);
-        EEPROM.write((finger_id*4)+2,255);
-        EEPROM.write((finger_id*4)+3,255);
+        EEPROM.write((finger_id*5)+0,255);
+        EEPROM.write((finger_id*5)+1,255);
+        EEPROM.write((finger_id*5)+2,255);
+        EEPROM.write((finger_id*5)+3,255);
         showLed(GREEN_LED,3,"Usuario de      control borrado");
       }
     } 
@@ -419,6 +446,7 @@ void checkAccess(){
     digitalWrite(RELAY_PIN,LOW);
     delay(100);
     digitalWrite(RELAY_PIN,HIGH);
+	EEPROM.write((id * 5) + 4, 1);
     showLed(GREEN_LED,3,"Acceso Permitido");
   }
   else{
@@ -433,14 +461,15 @@ void checkAccess(){
         i++;
       }        
     }
-    int16_t pass = EEPROM.read(id*4+0);
-    pass = pass*10 + EEPROM.read(id*4+1);
-    pass = pass*10 + EEPROM.read(id*4+2);
-    pass = pass*10 + EEPROM.read(id*4+3);
+    int16_t pass = EEPROM.read(id*5+0);
+    pass = pass*10 + EEPROM.read(id*5+1);
+    pass = pass*10 + EEPROM.read(id*5+2);
+    pass = pass*10 + EEPROM.read(id*5+3);
     showLed(WHITE_LED,3,"Introduce tu    clave");
     if(pass == getPassword() && pass != 0){
       digitalWrite(RELAY_PIN,LOW);
       showLed(GREEN_LED,3,"Acceso Permitido");
+	  EEPROM.write((id * 5) + 4, 1);
       digitalWrite(RELAY_PIN,HIGH);
     }
     else
@@ -456,10 +485,11 @@ void factoryReset(){
     int i = 0;
     while(i<161){
       if(finger.deleteModel(i) == FINGERPRINT_OK){
-        EEPROM.write(i*4+0,255);
-        EEPROM.write(i*4+1,255);
-        EEPROM.write(i*4+2,255);
-        EEPROM.write(i*4+3,255);
+        EEPROM.write(i*5+0,255);
+        EEPROM.write(i*5+1,255);
+        EEPROM.write(i*5+2,255);
+        EEPROM.write(i*5+3,255);
+		EEPROM.write(i*5+4,255);
         #ifdef DEBUG
           Serial.print("Borrado Usuario: ");
           Serial.println(i);
@@ -515,3 +545,39 @@ void draw(char* m){
   u8g.drawStr( 0, 15+i, message);
 }
 #endif
+
+uint8_t limitReset() {
+  uint8_t i = num_control_id;
+  uint8_t  aux = 0;
+
+  while (i < 161) {
+    if (EEPROM.read(i * 5 + 4) >= limit) {
+      EEPROM.write(i * 5 + 0, 255);
+      EEPROM.write(i * 5 + 1, 255);
+      EEPROM.write(i * 5 + 2, 255);
+      EEPROM.write(i * 5 + 3, 255);
+      EEPROM.write(i * 5 + 4, 0);
+      finger.deleteModel(i);
+      user_numbers--;
+       if(i == last_user_id-1){
+          while(EEPROM.read(((last_user_id-1) * 5) + 4) == 0){
+            last_user_id--;
+            }
+          }
+#ifdef DEBUG
+      Serial.print("Borrado Usuario: ");
+      Serial.println(i);
+      Serial.println(last_user_id);
+      Serial.println(user_numbers);
+            Serial.println("limit reset");
+#endif
+    }
+    aux = EEPROM.read(i * 5 + 4);
+    if (aux != 0) {
+      aux++;
+      EEPROM.write(i * 5 + 4, aux);
+    }
+    i++;
+  }
+  return i;
+}
